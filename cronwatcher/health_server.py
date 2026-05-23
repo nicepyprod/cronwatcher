@@ -60,3 +60,15 @@ class HealthServer:
         if self._server:
             self._server.shutdown()
             logger.info("Health server stopped")
+
+    @property
+    def is_running(self) -> bool:
+        """Return True if the server thread is alive and serving requests."""
+        return (
+            self._thread is not None
+            and self._thread.is_alive()
+        )
+
+    def __repr__(self) -> str:
+        status = "running" if self.is_running else "stopped"
+        return f"HealthServer({self._host}:{self._port}, {status})"
