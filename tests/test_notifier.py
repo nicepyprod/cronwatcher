@@ -34,6 +34,10 @@ class TestSeverityForEvent:
     def test_success_is_info(self):
         assert severity_for_event(_event(exit_code=0)) == Severity.INFO
 
+    def test_non_zero_exit_takes_precedence_over_missed(self):
+        """A failed job that is also marked missed should be CRITICAL, not WARNING."""
+        assert severity_for_event(_event(exit_code=2, missed=True)) == Severity.CRITICAL
+
 
 class TestNotifier:
     def test_sends_when_severity_meets_threshold(self, alert_config):
@@ -62,3 +66,12 @@ class TestNotifier:
         with patch("cronwatcher.notifier.AlertSender.send", return_value=True):
             result = notifier.notify(_event(exit_code=0))
         assert result.sent is True
+
+    def test_disabled_config_skips_send(self, alert_config):
+        """Notifier should not send when the alert config is disabled."""
+        alert_config.enabled = False
+        notifier = Notifier(alert_config, min_severity=Severity.INFO)
+        with patch("cronwatcher.notifier.AlertSender.send") as mock_send:
+            result = notifier.notify(_event(exit_code=1))
+        mock_send.assert_not_called()
+        assert result.sent is False
